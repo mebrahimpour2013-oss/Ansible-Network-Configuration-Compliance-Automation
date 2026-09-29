@@ -1,10 +1,16 @@
 Ansible Network Configuration & Compliance Automation
 
-Ansible-based network automation project for managing and validating MikroTik RouterOS configuration through SSH.
+An Ansible-based network automation project for managing, validating, and enforcing configuration state on MikroTik RouterOS through SSH.
 
-This repository was built and validated against a real MikroTik RouterOS environment. It is intentionally focused on a small, testable compliance control rather than pretending to be a complete multi-vendor platform.
+This project was built and validated against a real MikroTik RouterOS environment and is being developed incrementally toward a broader multi-device, multi-vendor network configuration and compliance framework.
 
-The core operational workflow is:
+The project is intentionally versioned: each release adds a defined layer of automation capability while keeping the existing workflow testable and operational.
+
+---
+
+Project Overview
+
+The core idea is simple:
 
 Desired State
      ↓
@@ -22,108 +28,161 @@ Compliant  Remediate
              ↓
           Compliant
 
+The project focuses on the operational lifecycle of network configuration:
+
+Define → Observe → Compare → Detect → Remediate → Validate → Report
+
+Rather than treating network automation as a collection of device commands, the project uses a desired-state approach where configuration changes are conditional, validated, and designed to be repeatable.
+
+---
+
 Project Objective
 
-The goal is to demonstrate practical network-engineering automation:
+The objective is to demonstrate practical Network Automation and Configuration Management capabilities using technologies that are relevant to real network infrastructure environments.
 
-- define a desired device state
-- detect configuration drift
-- change configuration only when required
-- validate the resulting state
-- keep environment-specific credentials outside Git
-- provide a foundation for additional compliance policies
+The current implementation demonstrates:
 
-Ansible is the primary configuration-management layer. Python provides complementary validation and remediation utilities.
-
-What This Project Demonstrates
-
-- Network automation
-- Ansible Network CLI
-- MikroTik RouterOS automation
-- SSH-based device management
 - Desired-state configuration
-- Idempotency
+- Network device automation
+- Idempotent configuration changes
 - Configuration drift detection
 - Automated remediation
 - Post-change validation
-- Python automation
-- Reproducible configuration
-- Troubleshooting across the device/SSH/Ansible/vendor-collection stack
+- SSH-based network management
+- Ansible Network CLI
+- MikroTik RouterOS automation
+- Python-based validation and remediation
+- Reproducible dependency management
+- Operational troubleshooting
+- Separation of automation logic from environment-specific credentials
+
+The project is intentionally being developed in stages rather than claiming capabilities that have not yet been implemented.
+
+---
+
+Current Scope
+
+The current release is focused on a real MikroTik RouterOS environment.
+
+Current compliance control
+
+Device Platform:
+MikroTik RouterOS
+
+Compliance Control:
+RouterOS system identity
+
+Desired State:
+AnsibleMikrotik
+
+The current workflow performs:
+
+1. Connect to the RouterOS device over SSH
+2. Collect the current configuration state
+3. Normalize the returned CLI output
+4. Compare actual state with desired state
+5. Apply a change only when required
+6. Collect the state again
+7. Validate the resulting configuration
+8. Report the compliance result
+
+The current release deliberately does not claim multi-device or multi-vendor production support.
+
+Those capabilities are part of the planned development roadmap.
+
+---
 
 Real-World Validation
 
-The current implementation was executed against a real MikroTik RouterOS environment.
+The automation workflow has been exercised against a real MikroTik RouterOS environment.
 
-Current compliance policy:
+The implementation was not designed only as a theoretical Ansible example. The project has been used to investigate actual network-device automation behavior, including SSH connectivity, Ansible Network CLI behavior, vendor collection behavior, persistent connections, and RouterOS-specific constraints.
 
-RouterOS system identity
-Desired value: AnsibleMikrotik
+This provides a practical foundation for extending the project into additional compliance controls and eventually additional network platforms.
 
-The complete workflow has been exercised:
+---
 
-1. connect to RouterOS over SSH
-2. read the current identity
-3. normalize the CLI output
-4. compare actual vs desired state
-5. change the identity only when drift exists
-6. read the state again
-7. validate the resulting state
-8. report compliance
-
-The current release deliberately does not claim multi-device or multi-vendor production support. The architecture is designed so those capabilities can be added after the single-device workflow is proven.
-
-A Real Troubleshooting Case
+A Real Network Automation Troubleshooting Case
 
 During development, "community.routeros.command" produced repeated SSH command timeouts even though lower-level SSH connectivity and other Ansible connectivity tests were working.
 
-The investigation checked:
+The investigation covered the complete automation chain:
 
-- direct SSH connectivity
-- "network_cli"
+- Direct SSH connectivity
+- Ansible "network_cli"
 - "libssh"
-- persistent connection state
+- Persistent connection state
 - Ansible collections
 - RouterOS configuration
-- command execution behavior
+- Command execution behavior
 
-The verified trigger in this environment was the RouterOS system identity used by the SSH-based Ansible workflow.
+The verified trigger in this environment was related to the RouterOS system identity used by the SSH-based Ansible workflow.
 
-The Ansible RouterOS SSH guide documents that the identity should use supported characters and must not exceed 19 characters.
+The Ansible RouterOS SSH documentation specifies supported identity formatting and a maximum identity length of 19 characters.
 
-After changing the identity to:
+The problematic identity exceeded that limit.
+
+After changing the Rout
+
+erOS identity to:
 
 AnsibleMikrotik
 
 the same automation executed successfully without changing the playbook logic.
 
-This makes the project more than a playbook example: it also records a real network-automation troubleshooting case.
+This troubleshooting case is an important part of the project because it demonstrates that network-automation failures must be investigated across the complete chain:
+
+Network Device
+      ↓
+SSH
+      ↓
+Connection Plugin
+      ↓
+Ansible
+      ↓
+Vendor Collection
+      ↓
+Command Execution
+
+A timeout is not necessarily a playbook problem.
+
+---
 
 Automation Architecture
 
-The Ansible workflow is implemented in:
+The primary configuration workflow is implemented in:
 
 ansible/configure_router.yml
 
-Supporting utilities:
+Supporting Python utilities:
 
 scripts/validate_mikrotik.py
 scripts/remediate_mikrotik.py
 
-The intended separation is:
-
 Ansible
 
-- desired-state configuration
-- idempotent changes
-- network-device automation
-- compliance workflow
+Ansible is responsible for:
+
+- Desired-state configuration
+- Conditional configuration changes
+- Network-device automation
+- Idempotent execution
+- Post-change validation
+- Compliance workflow
 
 Python
 
-- lightweight state validation
-- drift detection
-- remediation utility
-- future integrations/custom logic
+Python provides complementary utilities for:
+
+- State validation
+- Drift detection
+- Independent remediation
+- Custom automation logic
+- Future integrations
+
+This separation keeps the main network configuration workflow in Ansible while allowing Python to handle supporting automation and custom logic.
+
+---
 
 Repository Structure
 
@@ -139,11 +198,13 @@ Repository Structure
 ├── requirements.yml
 └── README.md
 
-The real local inventory is intentionally excluded from version control.
+The real local inventory is intentionally excluded from version control because it can contain environment-specific connection information and credentials.
+
+---
 
 Technology Stack
 
-The repository is pinned to these reproducible dependency versions:
+The repository is designed around reproducible dependency versions.
 
 Component| Version
 Ansible Core| 2.21.4
@@ -153,25 +214,31 @@ community.routeros| 3.9.0
 MikroTik RouterOS| 7.x
 Connection| SSH / Network CLI
 
-The repository's "requirements.yml"
+The repository's "requirements.yml" is the source of truth for the Ansible collection versions used for reproducible installation.
 
-is the source of truth for the collection versions used for reproducible installation.
+The RouterOS automation uses:
 
-The RouterOS command module uses "ansible.netcommon.network_cli" with the "community.routeros" collection.
+ansible.netcommon.network_cli
+community.routeros
+SSH / libssh
+
+---
 
 Installation
 
-Install the required collections:
+Install the required Ansible collections:
 
 ansible-galaxy collection install -r requirements.yml
 
-Verify them if required:
+Verify the installed collections if required:
 
 ansible-galaxy collection list
 
+---
+
 Configuration
 
-Create a local inventory:
+Create a local inventory from the example:
 
 cp ansible/inventory.example.ini ansible/inventory.local.ini
 
@@ -179,18 +246,22 @@ Edit:
 
 ansible/inventory.local.ini
 
-with the connection information for the target RouterOS device.
+and provide the connection information for the target RouterOS device.
 
-The local inventory is excluded from Git because it can contain credentials and environment-specific information.
+The local inventory is excluded from Git.
 
-For real deployments, prefer:
+For real deployments, credentials should preferably be managed using mechanisms such as:
 
 - SSH keys
 - Ansible Vault
-- environment variables
-- a dedicated secrets-management system
+- Environment variables
+- Dedicated secrets-management systems
+
+---
 
 Running the Automation
+
+Run the configuration workflow with:
 
 ansible-playbook \
   -i ansible/inventory.local.ini \
@@ -198,35 +269,59 @@ ansible-playbook \
 
 The playbook performs:
 
-1. current-state collection
-2. output normalization
-3. desired-state comparison
-4. conditional remediation
-5. post-change collection
-6. explicit validation
-7. compliance reporting
+1. Current-state collection
+2. Output normalization
+3. Desired-state comparison
+4. Conditional remediation
+5. Post-change state collection
+6. Explicit validation
+7. Compliance reporting
+
+---
 
 Idempotency
 
-Idempotency is a core requirement.
+Idempotency is a core design requirement.
 
-When the device already matches the desired state, the configuration task should not make another configuration change.
+If the device already matches the desired state, the configuration task should not make an unnecessary configuration change.
 
 Conceptually:
 
 First run with drift:
-Actual → Mismatch → Change → Validate → Compliant
 
-Later run:
-Actual → Match → No change → Validate → Compliant
+Actual
+  ↓
+Mismatch
+  ↓
+Change
+  ↓
+Validate
+  ↓
+Compliant
 
-The repository avoids publishing a fixed Ansible recap such as "ok=..." because task counts can change as the playbook evolves.
+A subsequent execution:
 
-The important behavioral result is that the desired state is validated and repeated execution does not unnecessarily modify the device.
+Actual
+  ↓
+Match
+  ↓
+No configuration change
+  ↓
+Validate
+  ↓
+Compliant
+
+This allows the automation to be executed repeatedly without unnecessarily modifying an already-compliant device.
+
+The repository deliberately avoids publishing a fixed Ansible task recap such as "ok=..." because task counts may change as the implementation evolves.
+
+The important result is the behavior of the automation, not a hard-coded execution summary.
+
+---
 
 Configuration Drift
 
-Drift is treated as an explicit operational state:
+Configuration drift is treated as an explicit operational state.
 
 Desired State
      ↓
@@ -240,22 +335,26 @@ Clean   Remediate
            ↓
          Clean
 
-The same pattern can later be applied to:
+The same model can later be extended to ad
 
-- firewall policy
-- management services
+ditional controls such as:
+
+- Firewall policy
+- Management services
 - NTP
 - DNS
-- interface configuration
-- routing policy
-- security hardening
-- access controls
+- Interface configuration
+- Routing policy
+- Security hardening
+- Access controls
+
+---
 
 Python Validation
 
-The read-only validation utility can be used independently of the Ansible playbook.
+The validation utility can be executed independently of the Ansible workflow.
 
-Set the connection parameters:
+Set the required connection parameters:
 
 export MIKROTIK_HOST="YOUR_SERVER_IP"
 export MIKROTIK_PORT="2222"
@@ -265,69 +364,226 @@ Run:
 
 python3 scripts/validate_mikrotik.py
 
-A compliant device reports the desired identity, actual identity, and a clean drift status.
+The validation utility reports:
 
-The validation script does not modify the device.
+- Desired state
+- Actual state
+- Drift status
+
+The validation script is read-only and does not modify the device.
+
+---
 
 Python Remediation
 
-When drift is detected:
+When configuration drift is detected, the remediation utility can be executed:
 
 python3 scripts/remediate_mikrotik.py
 
-Validate again:
+Then validate the resulting state:
 
 python3 scripts/validate_mikrotik.py
 
-This provides a simple:
+This provides an independent:
 
 Detect → Remediate → Validate
 
-workflow outside the main Ansible execution path.
+workflow alongside the main Ansible configuration path.
+
+---
 
 MikroTik SSH Compatibility
 
 The tested RouterOS environment required specific SSH terminal compatibility settings.
 
-The effective SSH username uses:
+The effective SSH username used in the tested environment included:
 
 admin+cet512w
 
-and the Network CLI connection uses:
+The Network CLI connection used:
 
 ansible_network_cli_ssh_type=libssh
 
 The "+cet..." username suffix and terminal-detection behavior are environment-specific and should not be assumed to be mandatory for every RouterOS deployment.
 
+These details are documented because they were relevant to the real environment in which the automation was tested.
+
+---
+
 Security
+
+The repository must not contain sensitive environment data.
 
 Never commit:
 
-- passwords
-- private SSH keys
+- Passwords
+- Private SSH keys
 - API tokens
-- production inventories
-- configuration backups containing secrets
+- Production inventories
+- Configuration backups containing secrets
 - ".env" files
 - Vault passwords
 
-The repository's ".gitignore" excludes the local inventory and generated network data.
+The ".gitignore" excludes the local inventory and generated network data.
 
 The public repository contains the automation logic and reproducible project structure, while environment-specific secrets remain outside version control.
+
+---
+
+Development Roadmap
+
+The project is intentionally designed as a multi-version development effort.
+
+The current MikroTik implementation is the foundation, not the final scope.
+
+Each future version is intended to extend the same core model:
+
+Desired State
+      ↓
+Detect Drift
+      ↓
+Remediate
+      ↓
+Validate
+      ↓
+Report
+
+---
+
+v1.0 — RouterOS Configuration & Compliance Foundation
+
+Current release
+
+Implemented capabilities:
+
+- Ansible Network CLI
+- SSH-based MikroTik management
+- "community.routeros"
+- Desired-state configuration
+- Idempotent execution
+- Configuration drift detection
+- Conditional remediation
+- Post-change validation
+- Python validation
+- Python remediation
+- Real-world troubleshooting documentation
+- Secure separation of local credentials and public automation code
+
+Current compliance control:
+
+RouterOS System Identity
+Desired value: AnsibleMikrotik
+
+---
+
+v1.1 — Extended MikroTik Compliance
+
+The next stage will expand the number of compliance controls implemented for RouterOS.
+
+Planned areas include:
+
+- Firewall compliance
+- Management-service hardening
+- NTP configuration
+- DNS configuration
+- Interface configuration
+- Additional security-hardening policies
+- Expanded drift detection
+- Compliance reporting
+
+The goal is to move from a single compliance control toward a reusable RouterOS compliance baseline.
+
+---
+
+v1.2 — Automation Engineering & CI
+
+After expanding the compliance model, the project will add stronger engineering and quality controls.
+
+Planned capabilities include:
+
+- Ansible linting
+- Automated syntax validation
+- Regression checks
+- Structured compliance reports
+- GitHub Actions
+- Automated validation in CI
+- Improved testability of automation logic
+
+The objective is to make the automation more reproducible and maintainable as the project grows.
+
+---
+
+v2.0 — Multi-Device Automation
+
+After the RouterOS compliance model is stable, the project will expand from a single managed device to multiple devices.
+
+Planned capabilities include:
+
+- Multiple MikroTik devices
+- Standardized inventories
+- Device groups
+- Group-based configuration
+- Configuration baselines
+- Multi-de
+
+vice compliance reporting
+- Centralized drift visibility
+
+The objective is to demonstrate that the automation model scales beyond a single device.
+
+---
+
+v2.x — Multi-Vendor Network Automation
+
+The next major expansion is to additional network platforms.
+
+Cisco IOS and FortiGate are planned targets.
+
+The project will investigate how the same desired-state and compliance model can be applied across different vendors while keeping vendor-specific implementation details separated where necessary.
+
+Planned platforms:
+
+MikroTik RouterOS
+       ↓
+Cisco IOS
+       ↓
+FortiGate
+
+The goal is to evolve the project into a reusable multi-vendor network configuration and compliance framework.
+
+---
+
+Future Direction
+
+As the multi-vendor automation foundation becomes mature, the project can be extended toward:
+
+- Git-based change management
+- CI/CD
+- Network APIs
+- Automated compliance reporting
+- Infrastructure as Code practices
+- Cloud networking integration
+- Network monitoring integration
+- Configuration backup and recovery
+- Automated operational workflows
+
+These capabilities will be added only when they provide a meaningful extension to the project rather than being added as unrelated technologies.
+
+---
 
 Design Principles
 
 Reproducible
 
-Dependencies are defined in "requirements.yml" and an example inventory is provided.
+Dependencies are explicitly defined and the project provides an example inventory.
 
 Idempotent
 
-Changes are conditional on the difference between actual and desired state.
+Configuration changes are conditional on the difference between actual and desired state.
 
 Validated
 
-The resulting device state is explicitly checked after a configuration operation.
+Configuration changes are followed by explicit state validation.
 
 Operationally Tested
 
@@ -335,51 +591,21 @@ The workflow has been exercised against a real MikroTik RouterOS environment.
 
 Troubleshootable
 
-The repository documents an actual automation timeout and the end-to-end investigation tha
-
-t identified the device-side constraint.
+The project documents a real automation failure and the end-to-end investigation used to identify the device-side constraint.
 
 Extensible
 
-Additional compliance controls can use the same desired-state → remediation → validation architecture.
+New compliance controls and network platforms can follow the same desired-state, remediation, and validation model.
 
 Secure
 
-Credentials and environment-specific data remain outside version control.
+Environment-specific credentials and sensitive data remain outside version control.
 
-Roadmap
+Incremental
 
-The roadmap is deliberately incremental and aligned with real network-automation work.
+The project is developed through defined versions rather than claiming capabilities before they are implemented and validated.
 
-v1.1 — Extended RouterOS Compliance
-
-Planned controls:
-
-- firewall compliance
-- management-service hardening
-- NTP configuration
-- DNS configuration
-- interface configuration
-- additional security policies
-- drift reporting
-
-v1.2 — Automation Quality
-
-Planned engineering improvements:
-
-- Ansible linting
-- automated syntax validation
-- structured compliance reports
-- GitHub Actions
-- automated regression checks
-
-v2.x — Multi-Device / Multi-Vendor
-
-After the RouterOS compliance model is stable, expand to multiple devices and eventually other platforms such as Cisco.
-
-The goal is not a collection of unrelated device scripts.
-
-The goal is a reusable network configuration and compliance framework.
+---
 
 Project Status
 
@@ -389,39 +615,44 @@ Environment:           Real MikroTik RouterOS
 Primary automation:    Ansible
 Supporting automation: Python
 Management protocol:   SSH
-Current control:       RouterOS system identity
-Focus:                 Configuration Management
-                       Compliance
-                       Drift Detection
-                       Remediation
-                       Validation
 
-Why This Project Matters
+Current control:
+RouterOS System Identity
 
-This is intentionally positioned as a network-engineering automation project, not an Ansible syntax exercise.
+Current focus:
+Configuration Management
+Compliance
+Drift Detection
+Remediation
+Validation
 
-It demonstrates the complete operational loop:
+Planned expansion:
+Extended RouterOS Compliance
+CI / Automation Quality
+Multi-Device Automation
+Cisco IOS
+FortiGate
+Multi-Vendor Network Automation
 
-Define
-  ↓
-Observe
-  ↓
-Compare
-  ↓
-Detect Drift
-  ↓
-Remediate
-  ↓
-Validate
-  ↓
-Report
+---
 
-It also demonstrates an important practical skill: troubleshooting the complete automation chain rather than assuming that every timeout is a playbook problem.
+Project Evolution
 
-This is the foundation for the next stages of the project: broader compliance policies, multi-device automation, reporting, CI/CD, and eventually multi-vendor network automation.
+v1.0
+MikroTik Foundation
+      ↓
+v1.1
+Extended Compliance
+      ↓
+v1.2
+Automation Quality / CI
+      ↓
+v2.0
+Multi-Device
+      ↓
+v2.x
+Cisco + FortiGate
+      ↓
+Multi-Vendor Network Automation
 
-License
-
-No open-source license has been selected for the initial release.
-
-A license can be added if the project is later intended for public reuse, redistribution, or community contribution.
+The project is developed incrementally, and each new capability is added after implementation and validation.
