@@ -1,0 +1,63 @@
+---
+- name: Manage MikroTik configuration
+  hosts: routers
+  gather_facts: false
+
+  vars:
+    desired_identity: "AnsibleMikrotik"
+
+  tasks:
+    - name: Read current router identity
+      community.routeros.command:
+        commands:
+          - /system identity print
+      register: identity_output
+      changed_when: false
+
+    - name: Parse current router identity
+      ansible.builtin.set_fact:
+        actual_identity: >-
+          {{
+            identity_output.stdout_lines[0]
+            | join('')
+            | regex_replace('^name:', '')
+            | regex_replace('[^A-Za-z0-9._-]', '')
+          }}
+
+    - name: Set router identity when required
+      community.routeros.command:
+        commands:
+          - '/system identity set name="{{ desired_identity }}"'
+      when: actual_identity != desired_identity
+
+    - name: Validate router identity
+      community.routeros.command:
+        commands:
+          - /system identity print
+      register: validation_output
+      changed_when: false
+
+    - name: Parse validated identity
+      ansible.builtin.set_fact:
+        validated_identity: >-
+          {{
+            validation_output.stdout_lines[0]
+            | join('')
+            | regex_replace('^name:', '')
+            | regex_replace('[^A-Za-z0-9._-]', '')
+          }}
+
+    - name: Verify desired configuration
+      ansible.builtin.assert:
+        that:
+          - validated_identity == desired_identity
+        fail_msg: >
+          Router identity validation failed.
+          Expected "{{ desired_identity }}",
+          got "{{ validated_identity }}"
+        success_msg: >
+          Router identity is compliant: {{ validated_identity }}
+
+    - name: Display validation result
+      ansible.builtin.debug:
+        msg: "MikroTik configuration is compliant."

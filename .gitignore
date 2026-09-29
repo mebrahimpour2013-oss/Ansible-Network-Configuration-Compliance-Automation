@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Ansible
+*.retry
+
+# Environment / secrets
+.env
+.env.*
+*.vault
+*.secret
+
+# Runtime-generated backups
+backups/*.tmp
+backups/latest/
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Ansible runtime/cache
+.ansible/
+**/.ansible/
+
+# Local virtual environments
+**/.venv/
+**/venv/
+
+# Local Ansible inventory
+ansible/inventory.local.ini
+
+# Local environment/secrets
+.env
+.env.*
+*.secret
+*.vault
+
+# Local/generated network data
+backups/
+inventory.ini
