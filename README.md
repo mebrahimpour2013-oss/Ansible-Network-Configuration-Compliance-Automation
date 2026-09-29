@@ -122,9 +122,7 @@ The Ansible RouterOS SSH documentation specifies supported identity formatting a
 
 The problematic identity exceeded that limit.
 
-After changing the Rout
-
-erOS identity to:
+After changing the RouterOS identity to:
 
 AnsibleMikrotik
 
@@ -335,9 +333,7 @@ Clean   Remediate
            ↓
          Clean
 
-The same model can later be extended to ad
-
-ditional controls such as:
+The same model can later be extended to additional controls such as:
 
 - Firewall policy
 - Management services
@@ -524,9 +520,7 @@ Planned capabilities include:
 - Device groups
 - Group-based configuration
 - Configuration baselines
-- Multi-de
-
-vice compliance reporting
+- Multi-device compliance reporting
 - Centralized drift visibility
 
 The objective is to demonstrate that the automation model scales beyond a single device.
