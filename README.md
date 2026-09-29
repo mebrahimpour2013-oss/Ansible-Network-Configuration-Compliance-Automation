@@ -78,7 +78,7 @@ AnsibleMikrotik
 The current workflow performs:
 
 1. Connect to the RouterOS device over SSH
-2. Collect the current configuration state
+2. Collect the current device state
 3. Normalize the returned CLI output
 4. Compare actual state with desired state
 5. Apply a change only when required
@@ -210,7 +210,7 @@ Component| Version
 Ansible Core| 2.21.4
 Python| 3.14.4
 ansible.netcommon| 8.7.1
-community.routeros| 3.9.0
+community.routeros| 3.22.0
 MikroTik RouterOS| 7.x
 Connection| SSH / Network CLI
 

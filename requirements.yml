@@ -4,4 +4,4 @@ collections:
     version: "8.7.1"
 
   - name: community.routeros
-    version: "3.9.0"
+    version: "3.22.0"
