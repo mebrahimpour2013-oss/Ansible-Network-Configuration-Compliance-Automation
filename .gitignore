@@ -1,44 +1,22 @@
-# Python
+.venv/
 __pycache__/
 *.py[cod]
-.venv/
-venv/
-
-# Ansible
+.pytest_cache/
+.cache/
 *.retry
-
-# Environment / secrets
-.env
-.env.*
-*.vault
-*.secret
-
-# Runtime-generated backups
-backups/*.tmp
-backups/latest/
-
-# OS / Editor
-.DS_Store
-.vscode/
-.idea/
-
-# Ansible runtime/cache
-.ansible/
-**/.ansible/
-
-# Local virtual environments
-**/.venv/
-**/venv/
-
-# Local Ansible inventory
 ansible/inventory.local.ini
-
-# Local environment/secrets
+ansible/inventory.local.yml
+ansible/vault/
 .env
 .env.*
 *.secret
-*.vault
-
-# Local/generated network data
+*.secrets
+*.key
+*.pem
+*.crt
+*.csr
 backups/
-inventory.ini
+.DS_Store
+
+_archive/
+FINAL_MIGRATION.md

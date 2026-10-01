@@ -1,0 +1,276 @@
+---
+- name: MikroTik Firewall Baseline Remediation
+  hosts: routers
+  gather_facts: false
+
+  vars_files:
+    - group_vars/routers.yml
+
+  tasks:
+
+    - name: Collect current firewall filter state
+      community.routeros.command:
+        commands:
+          - /ip firewall filter print terse
+      register: firewall_state
+      changed_when: false
+
+    - name: Parse RouterOS firewall state
+      ansible.builtin.set_fact:
+        current_rules: >-
+          {{
+            firewall_state.stdout_lines[0]
+            | routeros_parse_rules
+          }}
+
+    - name: Evaluate firewall baseline
+      ansible.builtin.set_fact:
+        compliance: >-
+          {{
+            current_rules
+            | routeros_firewall_compliance(firewall_baseline)
+          }}
+
+    - name: Show compliance result
+      ansible.builtin.debug:
+        msg:
+          - "Compliant: {{ compliance.compliant }}"
+          - "Disabled: {{ compliance.disabled }}"
+          - "Missing: {{ compliance.missing }}"
+          - "Drift: {{ compliance.drift }}"
+          - "Duplicate: {{ compliance.duplicate }}"
+          - "Order drift: {{ compliance.order_drift }}"
+          - "Order result: {{ compliance.order_results }}"
+
+    - name: Stop on duplicate baseline controls
+      ansible.builtin.fail:
+        msg: >-
+          Duplicate firewall baseline control(s) detected.
+          Automatic remediation is refused:
+          {{ compliance.duplicate | join(', ') }}
+      when: compliance.duplicate | length > 0
+
+    - name: Enable disabled baseline controls
+      community.routeros.command:
+        commands:
+          - >-
+            /ip firewall filter enable
+            [find where comment={{
+              item.comment
+              | community.routeros.quote_argument_value
+            }}]
+      loop: "{{ firewall_baseline }}"
+      when: item.name in compliance.disabled
+
+    - name: Remediate drifted baseline controls
+      community.routeros.command:
+        commands:
+          - >-
+            /ip firewall filter set
+            [find where comment={{
+              item.comment
+              | community.routeros.quote_argument_value
+            }}]
+            chain={{ item.chain }}
+            action={{ item.action }}
+            {% if item['connection-state'] is defined %}
+            connection-state={{
+              item['connection-state'] | join(',')
+            }}
+            {% endif %}
+            {% if item['in-interface'] is defined %}
+            in-interface={{ item['in-interface'] }}
+            {% endif %}
+            {% if item['out-interface'] is defined %}
+            out-interface={{ item['out-interface'] }}
+            {% endif %}
+            {% if item.protocol is defined %}
+            protocol={{ item.protocol }}
+            {% endif %}
+            {% if item['src-address'] is defined %}
+            src-address={{ item['src-address'] }}
+            {% endif %}
+            {% if item['dst-address'] is defined %}
+            dst-address={{ item['dst-address'] }}
+            {% endif %}
+            {% if item['src-port'] is defined %}
+            src-port={{ item['src-port'] }}
+            {% endif %}
+            {% if item['dst-port'] is defined %}
+            dst-port={{ item['dst-port'] }}
+            {% endif %}
+      loop: "{{ firewall_baseline }}"
+      when: item.name in compliance.drift
+
+    - name: Add missing baseline controls
+      community.routeros.command:
+        commands:
+          - >-
+            /ip firewall filter add
+            chain={{ item.chain }}
+            action={{ item.action }}
+            {% if item['connection-state'] is defined %}
+            connection-state={{
+              item['connection-state'] | join(',')
+            }}
+            {% endif %}
+            {% if item['in-interface'] is defined %}
+            in-interface={{ item['in-interface'] }}
+            {% endif %}
+            {% if item['out-interface'] is defined %}
+            out-interface={{ item['out-interface'] }}
+            {% endif %}
+            {% if item.protocol is defined %}
+            protocol={{ item.protocol }}
+            {% endif %}
+            {% if item['src-address'] is defined %}
+            src-address={{ item['src-address'] }}
+            {% endif %}
+            {% if item['dst-address'] is defined %}
+            dst-address={{ item['dst-address'] }}
+            {% endif %}
+            {% if item['src-port'] is defined %}
+            src-port={{ item['src-port'] }}
+            {% endif %}
+            {% if item['dst-port'] is defined %}
+            dst-port={{ item['dst-port'] }}
+            {% endif %}
+            comment={{
+              item.comment
+              | community.routeros.quote_argument_value
+            }}
+            {% if item['place-before-comment'] is defined %}
+            place-before=[find where comment={{
+              item['place-before-comment']
+              | community.routeros.quote_argument_value
+            }}]
+            {% endif %}
+      loop: "{{ firewall_baseline }}"
+      when: item.name in compliance.missing
+
+    # ------------------------------------------------------------
+    # ORDER REMEDIATION
+    #
+    # Process each chain independently.
+    #
+    # We walk the desired order from the end toward the beginning.
+    # Each managed rule is moved immediately before its desired
+    # successor. This converges deterministically without relying
+    # on volatile numeric rule IDs.
+    # ------------------------------------------------------------
+
+    - name: Build managed order pairs
+      ansible.builtin.set_fact:
+        order_pairs: "{{ order_pairs | default([]) + pair }}"
+      vars:
+        chain_items: >-
+          {{
+            firewall_baseline
+            | selectattr('chain', 'equalto', item.chain)
+            | list
+          }}
+        current_position: >-
+           {{
+              chain_items.index(item) | int
+            }}
+        successor: >-
+            {{
+              chain_items[(current_position | int) + 1]
+              if (current_position | int) + 1 < (chain_items | length)
+              else none
+            }}
+
+        pair: >-
+          {{
+            [
+              {
+                'chain': item.chain,
+                'name': item.name,
+                'comment': item.comment,
+                'successor_comment':
+                  (
+                    successor.comment
+                    if successor is not none
+                    else none
+                  )
+              }
+            ]
+          }}
+      loop: "{{ firewall_baseline | reverse | list }}"
+
+    - name: Apply managed firewall order
+      community.routeros.command:
+        commands:
+          - >-
+            /ip firewall filter move
+            [find where comment={{
+              item.comment
+              | community.routeros.quote_argument_value
+            }}]
+            [find where comment={{
+              item.successor_comment
+              | community.routeros.quote_argument_value
+            }}]
+      loop: "{{ order_pairs }}"
+      when:
+        - compliance.order_drift | length > 0
+        - item.successor_comment is not none
+        - item.name in compliance.order_drift
+
+    - name: Recollect firewall state after remediation
+      community.routeros.command:
+        commands:
+          - /ip firewall filter print terse
+      register: firewall_state_after
+      changed_when: false
+
+    - name: Parse final firewall state
+      ansible.builtin.set_fact:
+        final_rules: >-
+          {{
+            firewall_state_after.stdout_lines[0]
+            | routeros_parse_rules
+          }}
+
+    - name: Evaluate final firewall compliance
+      ansible.builtin.set_fact:
+        final_compliance: >-
+          {{
+            final_rules
+            | routeros_firewall_compliance(firewall_baseline)
+          }}
+    - name: Show final compliance summary
+      ansible.builtin.debug:
+        msg:
+          - "Compliant: {{ final_compliance.compliant }}"
+          - "Disabled: {{ final_compliance.disabled }}"
+          - "Missing: {{ final_compliance.missing }}"
+          - "Drift: {{ final_compliance.drift }}"
+          - "Duplicate: {{ final_compliance.duplicate }}"
+          - "Order drift: {{ final_compliance.order_drift }}"
+          - "Managed controls: {{ final_compliance.managed_count }}"
+          - "Compliant controls: {{ final_compliance.compliant_count }}"
+
+    - name: Assert firewall baseline is fully compliant
+      ansible.builtin.assert:
+        that:
+          - final_compliance.missing | length == 0
+          - final_compliance.disabled | length == 0
+          - final_compliance.drift | length == 0
+          - final_compliance.duplicate | length == 0
+          - final_compliance.order_drift | length == 0
+          - >-
+            final_compliance.compliant_count
+            == final_compliance.managed_count
+        success_msg: "FIREWALL BASELINE: COMPLIANT"
+        fail_msg: >-
+          FIREWALL BASELINE: FAILED —
+          missing={{ final_compliance.missing }},
+          disabled={{ final_compliance.disabled }},
+          drift={{ final_compliance.drift }},
+          duplicate={{ final_compliance.duplicate }},
+          order_drift={{ final_compliance.order_drift }}
+
+    - name: Show final raw firewall state
+      ansible.builtin.debug:
+        var: firewall_state_after.stdout_lines
